@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmetaLite — Профессиональный расчет смет и спецификаций онлайн</title>
+  <meta name="description" content="Бесплатный расчет строительных и сервисных смет. Готовые шаблоны, расчет налогов, экспорт в PDF и Excel. 100% конфиденциальность, локальное хранение.">
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="ecosystem-site" content="smetalite">
+</head>
+<body>
+
+  <!-- Top App Navigation & Status -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo-group">
+        <span class="logo-badge">SL</span>
+        <div>
+          <span class="brand-title">SmetaLite</span>
+          <span class="brand-subtitle">Генератор смет и спецификаций</span>
+        </div>
+        <span class="legal-status-badge" title="Локальный режим: обработка данных исключительно в браузере">
+          &#10003; Local-First &bull; 152-ФЗ Compliant
+        </span>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnReset" class="btn btn-sm">Новая смета</button>
+        <button id="btnImportJson" class="btn btn-sm">Загрузить JSON</button>
+        <input type="file" id="fileImportInput" accept=".json" style="display:none">
+        <button id="btnExportJson" class="btn btn-sm">Сохранить JSON</button>
+        <button id="btnExportCsv" class="btn btn-sm">Экспорт CSV</button>
+        <button id="btnPrint" class="btn btn-primary btn-sm">&#128438; Печать / Скачать PDF</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- Presets Toolbar -->
+    <div class="template-bar">
+      <span class="template-label">Готовые шаблоны:</span>
+      <button class="btn btn-sm" data-template="studio_renovation">Ремонт квартиры (студия)</button>
+      <button class="btn btn-sm" data-template="electrical_works">Электромонтаж</button>
+      <button class="btn btn-sm" data-template="web_development">IT & Веб-разработка</button>
+      <button class="btn btn-sm" data-template="commercial_cleaning">Клининг офиса</button>
+    </div>
+
+    <!-- Estimate Document Workspace -->
+    <div class="grid-workspace">
+
+      <!-- Header & Parties Details -->
+      <section class="card" aria-label="Реквизиты сторон">
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="form-label" for="estimateTitle">Наименование сметного расчета / договора</label>
+          <input type="text" id="estimateTitle" class="form-control" style="font-size: 1.15rem; font-weight: 600;" value="Смета на выполнение ремонтно-отделочных работ">
+        </div>
+
+        <div class="form-grid-2">
+          <!-- Contractor Box -->
+          <div style="background-color: #fbfcfd; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-weight: 600; margin-bottom: 0.65rem; color: var(--text-primary);">Исполнитель (Подрядчик)</div>
+            <div class="form-group">
+              <label class="form-label" for="contractorName">Организация / ФИО специалиста</label>
+              <input type="text" id="contractorName" class="form-control" placeholder="ИП Иванов И.И. / Самозанятый">
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="contractorPhone">Телефон</label>
+                <input type="tel" id="contractorPhone" class="form-control" placeholder="+7 (___) ___-__-__">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="contractorInn">ИНН (при наличии)</label>
+                <input type="text" id="contractorInn" class="form-control" placeholder="12 цифр">
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="contractorEmail">Электронная почта</label>
+              <input type="email" id="contractorEmail" class="form-control" placeholder="email@example.ru">
+            </div>
+          </div>
+
+          <!-- Client Box -->
+          <div style="background-color: #fbfcfd; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-weight: 600; margin-bottom: 0.65rem; color: var(--text-primary);">Заказчик (Клиент)</div>
+            <div class="form-group">
+              <label class="form-label" for="clientName">ФИО заказчика / Компания</label>
+              <input type="text" id="clientName" class="form-control" placeholder="Петров Петр Петрович">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="clientAddress">Адрес объекта выполнения работ</label>
+              <input type="text" id="clientAddress" class="form-control" placeholder="г. Москва, ул. Примерная, д. 1">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="clientPhone">Телефон заказчика</label>
+              <input type="tel" id="clientPhone" class="form-control" placeholder="+7 (___) ___-__-__">
+            </div>
+            <div class="form-grid-2" style="margin-bottom: 0;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="estimateNumber">Номер сметы</label>
+                <input type="text" id="estimateNumber" class="form-control" value="СМ-01">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="estimateDate">Дата составления</label>
+                <input type="date" id="estimateDate" class="form-control">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dynamic Sections Block -->
+      <section id="sectionsContainer" aria-label="Разделы сметы">
+        <!-- Rendered by app.js -->
+      </section>
+
+      <div>
+        <button type="button" id="btnAddSection" class="btn" style="width: 100%; border-style: dashed; padding: 0.75rem; font-weight: 600;">
+          + Добавить новый раздел сметы
+        </button>
+      </div>
+
+      <!-- Totals & Notes Summary Panel -->
+      <section class="summary-panel" aria-label="Итоговые расчеты">
+        <div class="notes-block">
+          <label class="form-label" for="estimateNotes">Условия выполнения работ, гарантия и порядок оплаты:</label>
+          <textarea id="estimateNotes" class="form-control" placeholder="Укажите сроки, гарантийные обязательства, порядок приемки..."></textarea>
+        </div>
+
+        <div class="calculation-card">
+          <div class="calc-row">
+            <span>Сумма по смете:</span>
+            <span id="subtotalAmount" style="font-weight: 600;">0,00 ₽</span>
+          </div>
+
+          <div class="calc-row">
+            <span>Скидка (%):</span>
+            <div style="width: 110px;">
+              <input type="number" id="discountPercent" min="0" max="100" class="form-control" value="0" style="padding: 2px 6px; text-align: right;">
+            </div>
+          </div>
+
+          <div class="calc-row">
+            <span>Сумма скидки:</span>
+            <span id="discountAmount">- 0,00 ₽ (0%)</span>
+          </div>
+
+          <div class="calc-row">
+            <span>Налоговый режим:</span>
+            <div style="width: 170px;">
+              <select id="taxType" class="form-control" style="padding: 2px 6px;">
+                <option value="none">Без НДС (УСН/ПСН/НПД)</option>
+                <option value="nds_22_incl">В т.ч. НДС 22% (Стандартная ставка РФ 2026 г.)</option>
+                <option value="nds_22_plus">НДС 22% сверху (Стандартная ставка РФ 2026 г.)</option>
+                <option value="nds_20_incl">В т.ч. НДС 20% (Переходные договоры)</option>
+                <option value="nds_20_plus">НДС 20% сверху</option>
+                <option value="nds_10_incl">В т.ч. НДС 10% (Льготная ставка)</option>
+                <option value="npd_4">НПД 4% (Самозанятый, расчет с физлиц)</option>
+                <option value="npd_6">НПД 6% (Самозанятый, расчет с ИП/юрлиц)</option>
+                <option value="usn_6">УСН 6% (Доходы, расчетный налог)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="calc-row">
+            <span id="taxLabelText">Налог:</span>
+            <span id="taxAmount" style="font-size: 0.8rem;">Не облагается</span>
+          </div>
+
+          <div class="calc-row final">
+            <span>ИТОГО К ОПЛАТЕ:</span>
+            <span id="totalAmount">0,00 ₽</span>
+          </div>
+
+          <div class="calc-row" style="margin-top: 0.5rem;">
+            <span>Внесенный аванс (₽):</span>
+            <div style="width: 130px;">
+              <input type="number" id="prepayment" min="0" step="500" class="form-control" value="0" style="padding: 2px 6px; text-align: right;">
+            </div>
+          </div>
+
+          <div class="calc-row due">
+            <span>Остаток к доплате:</span>
+            <span id="dueAmount">0,00 ₽</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Print Signatures (visible only in print media) -->
+      <div class="print-signatures">
+        <div class="sig-box">
+          <strong>Исполнитель:</strong><br><br>
+          ________________ / ___________________ /<br>
+          М.П. (при наличии)
+        </div>
+        <div class="sig-box">
+          <strong>Заказчик:</strong><br><br>
+          ________________ / ___________________ /<br>
+          С объемом и стоимостью работ согласен
+        </div>
+      </div>
+
+      <!-- Legal Footnote & Local-First Statement -->
+      <footer class="privacy-notice">
+        <div>
+          <strong>Безопасность и конфиденциальность данных:</strong> Данный инструмент работает полностью на стороне вашего браузера (Local-First). Никакие персональные данные клиентов, сметные расчеты и финансовые параметры не передаются на удаленный сервер и не сохраняются в централизованных базах данных (152-ФЗ РФ, ст. 18 / GDPR compliant).
+        </div>
+        <div style="margin-top: 0.4rem; color: var(--text-muted);">
+          Режим использования: <span style="color: var(--success); font-weight:600;">PUBLIC FREE MODE</span> &bull; Коммерческий биллинг отключен (PAYMENTS DISABLED) &bull; Версия 1.0.0
+        </div>
+      </footer>
+
+    </div>
+  </main>
+
+  <script src="shared/telemetry.js" onerror="this.onerror=null;this.src='../../shared/telemetry.js'"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
