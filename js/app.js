@@ -431,7 +431,8 @@ class SmetaApp {
   }
 
   exportCSV() {
-    recordEcosystemEvent('smetalite', 'csv_export', { number: this.state.client.number });
+    const totalItems = this.state.sections ? this.state.sections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) : 0;
+    recordEcosystemEvent('smetalite', 'file_export', { format: 'csv', itemCount: totalItems });
     let csv = '\uFEFF'; // UTF-8 BOM for Excel
     csv += 'Раздел;Номер;Наименование;Ед. изм.;Количество;Цена (руб);Сумма (руб)\n';
     this.state.sections.forEach(sec => {
@@ -658,7 +659,8 @@ class SmetaApp {
     const btnPrint = document.getElementById('btnPrint');
     if (btnPrint) {
       btnPrint.addEventListener('click', () => {
-        recordEcosystemEvent('smetalite', 'pdf_print', { number: this.state.client.number });
+        const totalItems = this.state.sections ? this.state.sections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) : 0;
+        recordEcosystemEvent('smetalite', 'file_export', { format: 'pdf', itemCount: totalItems });
         window.print();
       });
     }
@@ -667,7 +669,8 @@ class SmetaApp {
     const btnExportJson = document.getElementById('btnExportJson');
     if (btnExportJson) {
       btnExportJson.addEventListener('click', () => {
-        recordEcosystemEvent('smetalite', 'json_export', { number: this.state.client.number });
+        const totalItems = this.state.sections ? this.state.sections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0) : 0;
+        recordEcosystemEvent('smetalite', 'file_export', { format: 'json', itemCount: totalItems });
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.state, null, 2));
         const a = document.createElement('a');
         a.href = dataStr;
@@ -694,7 +697,7 @@ class SmetaApp {
               this.state = parsed;
               this.render();
               this.saveState();
-              recordEcosystemEvent('smetalite', 'json_import', { number: this.state.client.number });
+              recordEcosystemEvent('smetalite', 'user_action', { action: 'update_item' });
               alert("Смета успешно загружена!");
             } else {
               alert("Некорректный формат файла сметы.");

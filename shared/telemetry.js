@@ -23,8 +23,18 @@
   const MAX_LOCAL_EVENTS = 500;
   const MAX_QUEUE_ITEMS = 100;
 
-  // Primary Central Collector API endpoint (configurable via global override)
-  const COLLECTOR_URL = window.ECOSYSTEM_COLLECTOR_URL || '/api/telemetry';
+  // Environment detection: On GitHub Pages or file:// there is no server-side collector API.
+  // We strictly avoid attempting dead network requests (which would return 404 or fail).
+  const isStaticHost = (typeof window !== 'undefined' && window.location && (window.location.hostname.endsWith('github.io') || window.location.protocol === 'file:'));
+  const COLLECTOR_URL = window.ECOSYSTEM_COLLECTOR_URL || (isStaticHost ? null : '/api/telemetry');
+
+  // Detect test mode
+  function isTestMode() {
+    if (typeof window === 'undefined' || !window.location) return false;
+    if (window.__ECOSYSTEM_TEST_MODE__) return true;
+    const host = window.location.hostname;
+    return host === 'localhost' || host === '127.0.0.1';
+  }
 
   // 1. Same-Origin BroadcastChannel (Local Tab Bridge)
   let broadcastChannel = null;
@@ -131,23 +141,69 @@
   // 6. Unified Public Telemetry Interface
   const EcosystemTelemetry = {
     /**
-     * Record a telemetry event across all connected transports
-     * @param {string} siteId - 'smetalite' | 'pagestart' | 'partforge' | 'studyflow' | 'blockplan' | 'clipkit'
+     * Record a telemetry event strictly adhering to privacy schemas
+     * @param {string} siteId - 'smetalite' | 'pagestart' | 'partforge' | 'studyflow' | 'blockplan' | 'clipkit' | 'ecosystem_portal'
      * @param {string} eventType - 'pageview' | 'user_action' | 'file_export' | 'operation_complete' | 'error'
-     * @param {object} details - Non-PII metadata
+     * @param {object} rawDetails - Strictly typed schema metadata (NO company, personal, or document text)
      */
-    record(siteId, eventType, details) {
+    record(siteId, eventType, rawDetails) {
+      const cleanSite = String(siteId || 'ecosystem').toLowerCase();
+      const cleanEvent = String(eventType || 'user_action').toLowerCase();
+      const isTest = isTestMode();
+
+      // Normalize details to strict schema
+      let cleanDetails = {};
+      const src = (rawDetails && typeof rawDetails === 'object') ? rawDetails : {};
+
+      switch (cleanEvent) {
+        case 'pageview':
+          cleanDetails = {
+            path: typeof src.path === 'string' ? src.path.substring(0, 100) : (window.location ? window.location.pathname.substring(0, 100) : '/'),
+            viewport: typeof src.viewport === 'string' && /^\d{2,5}x\d{2,5}$/.test(src.viewport) ? src.viewport : `${window.innerWidth || 1280}x${window.innerHeight || 800}`
+          };
+          break;
+        case 'user_action':
+          cleanDetails = {
+            action: typeof src.action === 'string' ? src.action.toLowerCase() : 'calculate'
+          };
+          break;
+        case 'file_export':
+          cleanDetails = {
+            format: typeof src.format === 'string' ? src.format.toLowerCase() : 'csv',
+            itemCount: Number.isInteger(src.itemCount) && src.itemCount >= 0 ? src.itemCount : 1
+          };
+          if (typeof src.durationMs === 'number' && src.durationMs >= 0) {
+            cleanDetails.durationMs = Math.round(src.durationMs);
+          }
+          break;
+        case 'operation_complete':
+          cleanDetails = {
+            operation: typeof src.operation === 'string' ? src.operation.toLowerCase() : 'calculation',
+            status: src.status === 'failure' ? 'failure' : 'success'
+          };
+          break;
+        case 'error':
+          cleanDetails = {
+            code: typeof src.code === 'string' && /^[A-Z0-9_]{3,30}$/.test(src.code) ? src.code : 'E_GENERIC'
+          };
+          break;
+        default:
+          cleanDetails = { action: 'calculate' };
+          break;
+      }
+
       const payload = {
         id: 'evt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
         timestamp: new Date().toISOString(),
-        siteId: String(siteId || 'ecosystem').toLowerCase(),
-        eventType: String(eventType || 'action').toLowerCase(),
-        origin: window.location.origin,
+        siteId: cleanSite,
+        eventType: cleanEvent,
+        origin: (window.location ? window.location.origin : 'https://ecosystem.local'),
         sessionId: getSessionId(),
-        details: scrubPii(details || {})
+        isTest: isTest,
+        details: cleanDetails
       };
 
-      // A. LocalStorage History
+      // A. LocalStorage History (for local dashboard/offline inspection)
       try {
         const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         local.push(payload);
@@ -155,7 +211,7 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
       } catch (e) {}
 
-      // B. Same-Origin BroadcastChannel (for active tabs)
+      // B. Same-Origin BroadcastChannel (for active local tabs)
       if (broadcastChannel) {
         try {
           broadcastChannel.postMessage({
@@ -166,7 +222,7 @@
         } catch (e) {}
       }
 
-      // C. Sandboxed Iframe Bridge
+      // C. Sandboxed Iframe Bridge (for local preview)
       if (window.parent && window.parent !== window) {
         try {
           window.parent.postMessage({
@@ -176,7 +232,7 @@
         } catch (e) {}
       }
 
-      // D. Central HTTP Collector API
+      // D. Central HTTP Collector API (only if configured and not in purely static host)
       sendToCollector(payload);
 
       return payload;
@@ -198,8 +254,8 @@
       return this.record(siteId, 'operation_complete', Object.assign({ operation: operationName }, details));
     },
 
-    error(siteId, errorMsg, details) {
-      return this.record(siteId, 'error', Object.assign({ message: String(errorMsg) }, details));
+    error(siteId, errorCode) {
+      return this.record(siteId, 'error', { code: errorCode });
     },
 
     flush() {
@@ -236,8 +292,10 @@
     if (!inferredSite) inferredSite = 'ecosystem_portal';
 
     EcosystemTelemetry.pageview(inferredSite, {
-      title: document.title,
+      path: window.location.pathname,
       viewport: `${window.innerWidth}x${window.innerHeight}`
+    });
+  }
     });
   }
 })();
